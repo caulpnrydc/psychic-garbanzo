@@ -1,9 +1,15 @@
 import boto3
+import argparse
 
 #create sqs client
 sqs = boto3.client('sqs')
 
-queue_url='<SQS_QUEUE_HERE>'
+parser = argparse.ArgumentParser()
+parser.add_argument("-q", "--queue", help="url of sqs queue")
+
+args = parser.parse_args()
+
+queue_url= args.queue
 
 # send message to sqs - sample json msgs
 
