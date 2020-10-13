@@ -1,9 +1,18 @@
 import boto3
+import argparse
 
 
-queue_url = "<SQS_QUEUE_HERE>"
-backup_name = "<Filename>"
 
+parser = argparse.ArgumentParser()
+parser.add_argument("-q", "--queue", help="URL for SQS Queue")
+parser.add_argument("-o", "--out", help="Name for output file")
+parser.add_argument("-b", "--bucket", help="s3 bucket name")
+
+args = parser.parse_args()
+
+queue_url = args.queue
+backup_name = args.out
+bucket = args.bucket
 
 file = open(backup_name, 'a')
 sqs = boto3.client('sqs')
@@ -26,13 +35,11 @@ response = sqs.receive_message(
 
 message = response['Messages'][0]
 receipt_handle = message['ReceiptHandle']
-print('Receiving and saving messages')
 file.write('%s' % message + '\n')
 file.close()
 
 s3up = boto3.resource('s3')
-print('Starting file upload to S3 bucket...')
-s3up.Object('<S3_BUCKET_HERE>',backup_name).upload_file(backup_name)
+s3up.Object(bucket,backup_name).upload_file(backup_name)
 
 
 # Delete received messages from sqs queue
