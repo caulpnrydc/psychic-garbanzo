@@ -35,12 +35,10 @@ response = sqs.receive_message(
 
 message = response['Messages'][0]
 receipt_handle = message['ReceiptHandle']
-print('Receiving and saving messages')
 file.write('%s' % message + '\n')
 file.close()
 
 s3up = boto3.resource('s3')
-print('Starting file upload to S3 bucket...')
 s3up.Object(bucket,backup_name).upload_file(backup_name)
 
 
