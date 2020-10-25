@@ -15,7 +15,7 @@ queue_url= args.queue
 
 response = sqs.send_message(
         QueueUrl=queue_url,
-        DelaySeconds=10,
+        DelaySeconds=1,
         MessageAttributes={
             'Title': {
                 'DataType': 'String',
