@@ -55,7 +55,7 @@ def send_message(sqs_queue):
                 )
 
         print(response['MessageId'])
-        span.log_kv({'event': 'print'})
+        span.log_kv({'event': 'string-format', 'messageID': response['MessageId']})
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-q", "--queue", help="url of sqs queue")
