@@ -50,6 +50,7 @@ def receive_message(sqs_queue):
 
             message = response['Messages'][0]
             receipt_handle = message['ReceiptHandle']
+            span.log_kv({'event': 'string-format', 'receipt': receipt_handle})
             
             with tracer.start_span('receive-message', child_of=span2) as span3:
                 span3.set_tag('write-to-file', backup_name)
