@@ -33,36 +33,45 @@ def receive_message(sqs_queue):
         span.set_tag('sqs_queue', queue_url)
         span.log_kv({'event': 'string-format', 'value': queue_url})
 
-        response = sqs.receive_message(
-                QueueUrl=queue_url,
-                AttributeNames=[
-                    'SentTimestamp'
-                    ],
-                MaxNumberOfMessages=1,
-                MessageAttributeNames=[
-                    'All'
-                    ],
-                VisibilityTimeout=0,
-                WaitTimeSeconds=0
-                )
+        with tracer.start_span('receive-message', child_of=span) as span2:
+            span2.set_tag('receive-msg', queue_url)
+            response = sqs.receive_message(
+                    QueueUrl=queue_url,
+                    AttributeNames=[
+                        'SentTimestamp'
+                        ],
+                    MaxNumberOfMessages=1,
+                    MessageAttributeNames=[
+                        'All'
+                        ],
+                    VisibilityTimeout=0,
+                    WaitTimeSeconds=0
+                    )
 
-        message = response['Messages'][0]
-        receipt_handle = message['ReceiptHandle']
-        file.write('%s' % message + '\n')
-        file.close()
-        span.log_kv({'event': 'string-format', 'file': backup_name})
+            message = response['Messages'][0]
+            receipt_handle = message['ReceiptHandle']
+            
+            with tracer.start_span('receive-message', child_of=span2) as span3:
+                span3.set_tag('write-to-file', backup_name)
+                file.write('%s' % message + '\n')
+                file.close()
+                span.log_kv({'event': 'string-format', 'file': backup_name})
 
-        s3up = boto3.resource('s3')
-        s3up.Object(bucket,backup_name).upload_file(backup_name)
-        span.log_kv({'event': 'string-format', 'bucket': bucket})
-# Delete received messages from sqs queue
+                with tracer.start_span('receive-message', child_of=span3) as span4:
+                    span4.set_tag('upload-s3', bucket)
+                    s3up = boto3.resource('s3')
+                    s3up.Object(bucket,backup_name).upload_file(backup_name)
+                    span.log_kv({'event': 'string-format', 'bucket': bucket})
 
-        span.log_kv({'event': 'string-format', 'value': 'Delete'})
-        span.log_kv({'event': 'string-format', 'queue': queue_url})
-        sqs.delete_message(
-                QueueUrl=queue_url,
-                ReceiptHandle=receipt_handle
-                )
+                    # Delete received messages from sqs queue
+                    with tracer.start_span('receive-message', child_of=span4) as span5:
+                        span5.set_tag('delete-msg', queue_url)
+                        span.log_kv({'event': 'string-format', 'value': 'Delete'})
+                        span.log_kv({'event': 'string-format', 'queue': queue_url})
+                        sqs.delete_message(
+                                QueueUrl=queue_url,
+                                ReceiptHandle=receipt_handle
+                                )
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-q", "--queue", help="URL for SQS Queue")
