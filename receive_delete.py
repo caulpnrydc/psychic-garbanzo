@@ -27,13 +27,13 @@ tracer = init_tracer('sqs-empty')
 
 # Receive messages from sqs, write to json file, upload to s3
 def receive_message(sqs_queue):
-    with tracer.start_span('receive-message') as span:
+    with tracer.start_span('receive-message-init') as span:
         sqs = boto3.client('sqs')
 
         span.set_tag('sqs_queue', queue_url)
         span.log_kv({'event': 'string-format', 'value': queue_url})
 
-        with tracer.start_span('receive-message', child_of=span) as span2:
+        with tracer.start_span('receive-message-sqs', child_of=span) as span2:
             span2.set_tag('receive-msg', queue_url)
             response = sqs.receive_message(
                     QueueUrl=queue_url,
@@ -52,20 +52,20 @@ def receive_message(sqs_queue):
             receipt_handle = message['ReceiptHandle']
             span.log_kv({'event': 'string-format', 'receipt': receipt_handle})
             
-            with tracer.start_span('receive-message', child_of=span2) as span3:
+            with tracer.start_span('receive-message-write', child_of=span2) as span3:
                 span3.set_tag('write-to-file', backup_name)
                 file.write('%s' % message + '\n')
                 file.close()
                 span.log_kv({'event': 'string-format', 'file': backup_name})
 
-                with tracer.start_span('receive-message', child_of=span3) as span4:
+                with tracer.start_span('receive-message-s3', child_of=span3) as span4:
                     span4.set_tag('upload-s3', bucket)
                     s3up = boto3.resource('s3')
                     s3up.Object(bucket,backup_name).upload_file(backup_name)
                     span.log_kv({'event': 'string-format', 'bucket': bucket})
 
                     # Delete received messages from sqs queue
-                    with tracer.start_span('receive-message', child_of=span4) as span5:
+                    with tracer.start_span('receive-message-delete', child_of=span4) as span5:
                         span5.set_tag('delete-msg', queue_url)
                         span.log_kv({'event': 'string-format', 'value': 'Delete'})
                         span.log_kv({'event': 'string-format', 'queue': queue_url})
